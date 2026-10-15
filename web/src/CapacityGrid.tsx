@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { allocationState, dateLabel, hours, shiftDate } from "./capacity";
 import type { Capacity, Person } from "./capacity";
@@ -29,7 +29,9 @@ function CapacityEditor({
   const [error, setError] = useState("");
   const submitting = useRef(false);
   useEffect(() => {
-    dialog.current?.showModal();
+    const element = dialog.current;
+    element?.showModal();
+    return () => element?.close();
   }, []);
   async function save(event: FormEvent) {
     event.preventDefault();
@@ -128,6 +130,17 @@ export function CapacityGrid({ from: initialFrom, to: initialTo }: Props) {
   const [editing, setEditing] = useState<Person | null>(null);
   const [notice, setNotice] = useState("");
   const request = useRef(0);
+  const editTrigger = useRef<HTMLButtonElement | null>(null);
+  const searchInput = useRef<HTMLInputElement | null>(null);
+  useLayoutEffect(() => {
+    if (!editing && editTrigger.current) {
+      const target = editTrigger.current.isConnected
+        ? editTrigger.current
+        : searchInput.current;
+      target?.focus();
+      editTrigger.current = null;
+    }
+  }, [editing]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -136,7 +149,7 @@ export function CapacityGrid({ from: initialFrom, to: initialTo }: Props) {
     setError("");
     setNotice("");
     fetch(`/api/capacity?${new URLSearchParams(range)}`, {
-      signal: controller.signal,
+      signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
     })
       .then(responseJSON<Capacity>)
       .then((result) => {
@@ -266,6 +279,7 @@ export function CapacityGrid({ from: initialFrom, to: initialTo }: Props) {
         </div>
         <div className="filters">
           <input
+            ref={searchInput}
             aria-label="Search people"
             type="search"
             placeholder="Search people…"
@@ -337,7 +351,8 @@ export function CapacityGrid({ from: initialFrom, to: initialTo }: Props) {
                         <button
                           className="edit-hours"
                           aria-label={`Edit capacity for ${person.name}, ${hours(person.weeklyHours)} hours per week`}
-                          onClick={() => {
+                          onClick={(event) => {
+                            editTrigger.current = event.currentTarget;
                             setEditing(person);
                             setNotice("");
                           }}

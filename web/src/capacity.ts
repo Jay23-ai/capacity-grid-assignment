@@ -20,11 +20,12 @@ export function allocationState(hours: number, capacity: number) {
       : "available";
 }
 
-export const hours = (value: number) =>
-  new Intl.NumberFormat("en", { maximumFractionDigits: 2 }).format(value);
+const hourFormat = new Intl.NumberFormat("en", { maximumFractionDigits: 2 });
+const dayFormat = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
+export const hours = (value: number) => hourFormat.format(value);
 export const dateLabel = (value: string) =>
-  new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  }).format(new Date(`${value}T12:00:00Z`));
+  dayFormat.format(new Date(`${value}T12:00:00Z`));
